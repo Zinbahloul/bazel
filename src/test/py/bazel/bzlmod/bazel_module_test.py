@@ -30,28 +30,25 @@ class BazelModuleTest(test_base.TestBase):
     self.main_registry = BazelRegistry(
         os.path.join(self.registries_work_dir, 'main'))
     self.main_registry.createCcModule('aaa', '1.0') \
-        .createCcModule('aaa', '1.1') \
-        .createCcModule('bbb', '1.0', {'aaa': '1.0'}, {'aaa': 'com_foo_aaa'}) \
-        .createCcModule('bbb', '1.1', {'aaa': '1.1'}) \
-        .createCcModule('ccc', '1.1', {'aaa': '1.1', 'bbb': '1.1'}) \
-        .createCcModule('ddd', '1.0', {'yanked1': '1.0', 'yanked2': '1.0'}) \
-        .createCcModule('eee', '1.0', {'yanked1': '1.0'}) \
-        .createCcModule('yanked1', '1.0') \
-        .createCcModule('yanked2', '1.0') \
-        .addMetadata('yanked1', yanked_versions={'1.0': 'dodgy'}) \
-        .addMetadata('yanked2', yanked_versions={'1.0': 'sketchy'})
+          .createCcModule('aaa', '1.1') \
+          .createCcModule('bbb', '1.0', {'aaa': '1.0'}, {'aaa': 'com_foo_aaa'}) \
+          .createCcModule('bbb', '1.1', {'aaa': '1.1'}) \
+          .createCcModule('ccc', '1.1', {'aaa': '1.1', 'bbb': '1.1'}) \
+          .createCcModule('ddd', '1.0', {'yanked1': '1.0', 'yanked2': '1.0'}) \
+          .createCcModule('eee', '1.0', {'yanked1': '1.0'}) \
+          .createCcModule('yanked1', '1.0') \
+          .createCcModule('yanked2', '1.0') \
+          .addMetadata('yanked1', yanked_versions={'1.0': 'dodgy'}) \
+          .addMetadata('yanked2', yanked_versions={'1.0': 'sketchy'})
     self.ScratchFile(
         '.bazelrc',
         [
-            # In ipv6 only network, this has to be enabled.
-            # 'startup --host_jvm_args=-Djava.net.preferIPv6Addresses=true',
             'common --experimental_enable_bzlmod',
-            'common --registry=' + self.main_registry.getURL(),
-            # We need to have BCR here to make sure built-in modules like
-            # bazel_tools can work.
+            f'common --registry={self.main_registry.getURL()}',
             'common --registry=https://bcr.bazel.build',
             'common --verbose_failures',
-        ])
+        ],
+    )
     self.ScratchFile('WORKSPACE')
     # The existence of WORKSPACE.bzlmod prevents WORKSPACE prefixes or suffixes
     # from being used; this allows us to test built-in modules actually work
@@ -366,10 +363,8 @@ class BazelModuleTest(test_base.TestBase):
         "ERROR: <builtin>: //pkg:~module_ext~foo: no such attribute 'invalid_attr' in 'repo_rule' rule",
         stderr)
     self.assertTrue(
-        any([
-            '/pkg/extension.bzl", line 3, column 14, in _module_ext_impl'
-            in line for line in stderr
-        ]))
+        any('/pkg/extension.bzl", line 3, column 14, in _module_ext_impl' in line
+            for line in stderr))
 
   def testCommandLineModuleOverride(self):
     self.ScratchFile('MODULE.bazel', [
