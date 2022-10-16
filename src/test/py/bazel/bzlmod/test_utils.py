@@ -40,7 +40,7 @@ def read(path):
 def integrity(data):
   """Calculate the integration value of the data with sha256."""
   hash_value = hashlib.sha256(data)
-  return 'sha256-' + base64.b64encode(hash_value.digest()).decode()
+  return f'sha256-{base64.b64encode(hash_value.digest()).decode()}'
 
 
 def scratchFile(path, lines=None):
@@ -125,9 +125,7 @@ class BazelRegistry:
         repo_names[dep] = dep
 
     def calc_repo_name_str(dep):
-      if dep == repo_names[dep]:
-        return ''
-      return ', repo_name = "%s"' % repo_names[dep]
+      return '' if dep == repo_names[dep] else ', repo_name = "%s"' % repo_names[dep]
 
     scratchFile(src_dir.joinpath('WORKSPACE'))
     scratchFile(
@@ -144,15 +142,18 @@ class BazelRegistry:
         ])
 
     scratchFile(
-        src_dir.joinpath(name.lower() + '.h'), [
-            '#ifndef %s_H' % name.upper(),
-            '#define %s_H' % name.upper(),
+        src_dir.joinpath(f'{name.lower()}.h'),
+        [
+            f'#ifndef {name.upper()}_H',
+            f'#define {name.upper()}_H',
             '#include <string>',
-            'void hello_%s(const std::string& caller);' % name.lower(),
+            f'void hello_{name.lower()}(const std::string& caller);',
             '#endif',
-        ])
+        ],
+    )
     scratchFile(
-        src_dir.joinpath(name.lower() + '.cc'), [
+        src_dir.joinpath(f'{name.lower()}.cc'),
+        (([
             '#include <stdio.h>',
             '#include "%s.h"' % name.lower(),
         ] + ['#include "%s.h"' % dep.lower() for dep in deps] + [
@@ -160,28 +161,29 @@ class BazelRegistry:
             '    std::string lib_name = "%s@%s%s";' %
             (name, version, self.registry_suffix),
             '    printf("%s => %s\\n", caller.c_str(), lib_name.c_str());',
-        ] + ['    hello_%s(lib_name);' % dep.lower() for dep in deps] + [
+        ] + [f'    hello_{dep.lower()}(lib_name);' for dep in deps]) + [
             '}',
-        ])
+        ]),
+    )
     scratchFile(
-        src_dir.joinpath('BUILD'), [
+        src_dir.joinpath('BUILD'),
+        (([
             'package(default_visibility = ["//visibility:public"])',
             'cc_library(',
             '  name = "lib_%s",' % name.lower(),
             '  srcs = ["%s.cc"],' % name.lower(),
             '  hdrs = ["%s.h"],' % name.lower(),
-        ] + ([
-            '  deps = ["%s"],' % ('", "'.join([
-                '@%s//:lib_%s' % (repo_names[dep], dep.lower()) for dep in deps
-            ])),
-        ] if deps else []) + [
-            ')',
-        ])
+        ] + ([('  deps = ["%s"],' % '", "'.join(
+            [f'@{repo_names[dep]}//:lib_{dep.lower()}'
+             for dep in deps]))] if deps else [])) + [
+                 ')',
+             ]),
+    )
     return src_dir
 
   def createArchive(self, name, version, src_dir):
     """Create an archive with a given source directory."""
-    zip_path = self.archives.joinpath('%s.%s.zip' % (name, version))
+    zip_path = self.archives.joinpath(f'{name}.{version}.zip')
     zip_obj = zipfile.ZipFile(str(zip_path), 'w')
     for foldername, _, filenames in os.walk(str(src_dir)):
       for filename in filenames:
